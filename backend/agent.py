@@ -25,4 +25,8 @@ def ask_agent(query: str) -> str:
             }
         ]
     )
+<<<<<<< HEAD
     return response.choices[0].message.content
+=======
+    return response.choices[0].message.content
+>>>>>>> 898178117a8ceefff44ef60c1f37bb4059feca80
