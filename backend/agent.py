@@ -1,13 +1,28 @@
+import os
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
 def ask_agent(query: str) -> str:
-    """
-    Заглушка агента. Пока возвращает готовый ответ.
-    Позже заменим на реальный вызов Groq.
-    """
-    return (
-        "Рекомендую следующую сборку:\n"
-        "- Процессор: Intel Core i5-13600K\n"
-        "- Материнская плата: ASUS PRIME B660M-A\n"
-        "- Оперативная память: 32GB DDR4\n"
-        "- Видеокарта: NVIDIA RTX 4060\n"
-        "- Блок питания: 650W"
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Ты — AI-агент по подбору комплектующих для ПК. "
+                    "Пользователь описывает задачу и бюджет, ты подбираешь "
+                    "конкретные совместимые комплектующие с объяснением выбора. "
+                    "Отвечай на русском языке."
+                )
+            },
+            {
+                "role": "user",
+                "content": query
+            }
+        ]
     )
+    return response.choices[0].message.content
