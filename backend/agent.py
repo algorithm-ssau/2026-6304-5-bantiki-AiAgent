@@ -2,7 +2,7 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
@@ -12,12 +12,7 @@ def ask_agent(query: str) -> str:
         messages=[
             {
                 "role": "system",
-                "content": (
-                    "Ты — AI-агент по подбору комплектующих для ПК. "
-                    "Пользователь описывает задачу и бюджет, ты подбираешь "
-                    "конкретные совместимые комплектующие с объяснением выбора. "
-                    "Отвечай на русском языке."
-                )
+                "content": "Ty — AI-agent po podboru komplektuyuschikh dlya PK. Polzovatel opisyvaet zadachu i byudzhet, ty podbirаesh sovmestimye komplektuyuschie s obyasneniem vybora. Otvechay na russkom yazyke."
             },
             {
                 "role": "user",
