@@ -1,0 +1,174 @@
+{
+  "sockets": {
+    "LGA1700": [
+      "Intel Core i3-12100F",
+      "Intel Core i5-12400F",
+      "Intel Core i5-12600K",
+      "Intel Core i5-13400F",
+      "Intel Core i5-13600K",
+      "Intel Core i7-12700K",
+      "Intel Core i7-13700K",
+      "Intel Core i9-13900K"
+    ],
+    "LGA1200": [
+      "Intel Core i3-10100F",
+      "Intel Core i5-10400F",
+      "Intel Core i5-10600K",
+      "Intel Core i7-10700K",
+      "Intel Core i9-10900K"
+    ],
+    "AM5": [
+      "AMD Ryzen 5 7600",
+      "AMD Ryzen 5 7600X",
+      "AMD Ryzen 7 7700",
+      "AMD Ryzen 7 7700X",
+      "AMD Ryzen 9 7900X",
+      "AMD Ryzen 9 7950X"
+    ],
+    "AM4": [
+      "AMD Ryzen 5 5500",
+      "AMD Ryzen 5 5600",
+      "AMD Ryzen 5 5600X",
+      "AMD Ryzen 7 5700X",
+      "AMD Ryzen 7 5800X",
+      "AMD Ryzen 9 5900X",
+      "AMD Ryzen 9 5950X"
+    ]
+  },
+  "motherboards": {
+    "ASUS PRIME B660M-A": {
+      "socket": "LGA1700", "max_ram_gb": 64, "ram_type": "DDR4", "form_factor": "mATX"
+    },
+    "MSI PRO B660M-A": {
+      "socket": "LGA1700", "max_ram_gb": 128, "ram_type": "DDR4", "form_factor": "mATX"
+    },
+    "ASUS TUF GAMING Z690-PLUS": {
+      "socket": "LGA1700", "max_ram_gb": 128, "ram_type": "DDR5", "form_factor": "ATX"
+    },
+    "MSI MAG Z790 TOMAHAWK": {
+      "socket": "LGA1700", "max_ram_gb": 192, "ram_type": "DDR5", "form_factor": "ATX"
+    },
+    "ASUS PRIME H510M-K": {
+      "socket": "LGA1200", "max_ram_gb": 64, "ram_type": "DDR4", "form_factor": "mATX"
+    },
+    "MSI MAG B550 TOMAHAWK": {
+      "socket": "AM4", "max_ram_gb": 128, "ram_type": "DDR4", "form_factor": "ATX"
+    },
+    "ASUS ROG STRIX B550-F": {
+      "socket": "AM4", "max_ram_gb": 128, "ram_type": "DDR4", "form_factor": "ATX"
+    },
+    "Gigabyte B550M AORUS ELITE": {
+      "socket": "AM4", "max_ram_gb": 128, "ram_type": "DDR4", "form_factor": "mATX"
+    },
+    "ASUS ROG STRIX B650-A": {
+      "socket": "AM5", "max_ram_gb": 128, "ram_type": "DDR5", "form_factor": "ATX"
+    },
+    "MSI MAG B650 TOMAHAWK": {
+      "socket": "AM5", "max_ram_gb": 192, "ram_type": "DDR5", "form_factor": "ATX"
+    },
+    "Gigabyte B650M AORUS ELITE": {
+      "socket": "AM5", "max_ram_gb": 192, "ram_type": "DDR5", "form_factor": "mATX"
+    }
+  },
+  "ram": {
+    "DDR4": {
+      "8GB": ["Kingston Fury Beast 8GB DDR4-3200", "Corsair Vengeance LPX 8GB DDR4-3200"],
+      "16GB": ["Kingston Fury Beast 16GB DDR4-3200", "Corsair Vengeance LPX 16GB DDR4-3200", "G.Skill Ripjaws V 16GB DDR4-3600"],
+      "32GB": ["Kingston Fury Beast 32GB DDR4-3200", "Corsair Vengeance LPX 32GB DDR4-3200", "G.Skill Ripjaws V 32GB DDR4-3600"],
+      "64GB": ["Kingston Fury Beast 64GB DDR4-3200", "Corsair Vengeance LPX 64GB DDR4-3200"]
+    },
+    "DDR5": {
+      "16GB": ["Kingston Fury Beast 16GB DDR5-5200", "Corsair Vengeance 16GB DDR5-5600"],
+      "32GB": ["Kingston Fury Beast 32GB DDR5-5200", "Corsair Vengeance 32GB DDR5-5600", "G.Skill Trident Z5 32GB DDR5-6000"],
+      "64GB": ["Kingston Fury Beast 64GB DDR5-5200", "G.Skill Trident Z5 64GB DDR5-6000"]
+    }
+  },
+  "gpu": {
+    "бюджетные": {
+      "GTX 1650": {"vram_gb": 4, "tdp_w": 75, "recommended_psu_w": 450},
+      "GTX 1660 Super": {"vram_gb": 6, "tdp_w": 125, "recommended_psu_w": 450},
+      "RX 6600": {"vram_gb": 8, "tdp_w": 132, "recommended_psu_w": 500}
+    },
+    "средний класс": {
+      "RTX 3060": {"vram_gb": 12, "tdp_w": 170, "recommended_psu_w": 550},
+      "RTX 3060 Ti": {"vram_gb": 8, "tdp_w": 200, "recommended_psu_w": 600},
+      "RTX 4060": {"vram_gb": 8, "tdp_w": 115, "recommended_psu_w": 550},
+      "RX 6700 XT": {"vram_gb": 12, "tdp_w": 230, "recommended_psu_w": 650},
+      "RX 7600": {"vram_gb": 8, "tdp_w": 165, "recommended_psu_w": 550}
+    },
+    "высокий класс": {
+      "RTX 4060 Ti": {"vram_gb": 16, "tdp_w": 165, "recommended_psu_w": 650},
+      "RTX 4070": {"vram_gb": 12, "tdp_w": 200, "recommended_psu_w": 700},
+      "RTX 4070 Super": {"vram_gb": 12, "tdp_w": 220, "recommended_psu_w": 750},
+      "RX 7700 XT": {"vram_gb": 12, "tdp_w": 245, "recommended_psu_w": 700},
+      "RX 7800 XT": {"vram_gb": 16, "tdp_w": 263,
+"recommended_psu_w": 750}
+    },
+    "топ": {
+      "RTX 4080 Super": {"vram_gb": 16, "tdp_w": 320, "recommended_psu_w": 850},
+      "RTX 4090": {"vram_gb": 24, "tdp_w": 450, "recommended_psu_w": 1000},
+      "RX 7900 XTX": {"vram_gb": 24, "tdp_w": 355, "recommended_psu_w": 900}
+    }
+  },
+  "storage": {
+    "SSD_NVMe": {
+      "500GB": ["Kingston NV2 500GB", "Samsung 980 500GB", "WD Blue SN570 500GB"],
+      "1TB": ["Kingston NV2 1TB", "Samsung 980 Pro 1TB", "WD Blue SN570 1TB", "Crucial P3 1TB"],
+      "2TB": ["Kingston NV2 2TB", "Samsung 980 Pro 2TB", "WD Blue SN570 2TB"]
+    },
+    "SSD_SATA": {
+      "500GB": ["Kingston A400 480GB", "Samsung 870 EVO 500GB"],
+      "1TB": ["Kingston A400 960GB", "Samsung 870 EVO 1TB", "Crucial MX500 1TB"]
+    },
+    "HDD": {
+      "1TB": ["Seagate Barracuda 1TB", "WD Blue 1TB"],
+      "2TB": ["Seagate Barracuda 2TB", "WD Blue 2TB"],
+      "4TB": ["Seagate Barracuda 4TB", "WD Blue 4TB"]
+    }
+  },
+  "cooling": {
+    "stock": ["Intel Laminar RM1", "AMD Wraith Stealth"],
+    "бюджетные": ["DeepCool GAMMAXX 400", "be quiet! Pure Rock 2"],
+    "средние": ["Noctua NH-U12S", "DeepCool AK400", "ARCTIC Freezer 34 eSports"],
+    "топ": ["Noctua NH-D15", "be quiet! Dark Rock Pro 4"],
+    "СЖО 240мм": ["Corsair iCUE H100i", "NZXT Kraken X53", "DeepCool LT520"],
+    "СЖО 360мм": ["Corsair iCUE H150i", "NZXT Kraken X73", "DeepCool LT720"]
+  },
+  "use_cases": {
+    "офис": {
+      "рекомендуемая_ram_gb": 16,
+      "нужна_gpu": false,
+      "рекомендуемый_cpu": ["Intel Core i3-12100F", "Intel Core i5-12400F", "AMD Ryzen 5 5600"]
+    },
+    "игры_1080p": {
+      "рекомендуемая_ram_gb": 16,
+      "нужна_gpu": true,
+      "рекомендуемый_gpu_класс": "средний класс",
+      "рекомендуемый_cpu": ["Intel Core i5-12400F", "Intel Core i5-13400F", "AMD Ryzen 5 5600X"]
+    },
+    "игры_1440p": {
+      "рекомендуемая_ram_gb": 32,
+      "нужна_gpu": true,
+      "рекомендуемый_gpu_класс": "высокий класс",
+      "рекомендуемый_cpu": ["Intel Core i5-13600K", "AMD Ryzen 7 5800X", "AMD Ryzen 7 7700X"]
+    },
+    "игры_4k": {
+      "рекомендуемая_ram_gb": 32,
+      "нужна_gpu": true,
+      "рекомендуемый_gpu_класс": "топ",
+      "рекомендуемый_cpu": ["Intel Core i7-13700K", "AMD Ryzen 9 7900X"]
+    },
+    "видеомонтаж": {
+      "рекомендуемая_ram_gb": 32,
+      "нужна_gpu": true,
+      "рекомендуемый_gpu_класс": "высокий класс",
+      "рекомендуемый_cpu": ["Intel Core i7-13700K", "AMD Ryzen 9 5900X", "AMD Ryzen 9 7900X"]
+    },
+    "3d_рендеринг": {
+      "рекомендуемая_ram_gb": 64,
+      "нужна_gpu": true,
+      "рекомендуемый_gpu_класс": "топ",
+      "рекомендуемый_cpu": ["Intel Core i9-13900K", "AMD Ryzen 9 7950X"]
+    }
+  }
+}
