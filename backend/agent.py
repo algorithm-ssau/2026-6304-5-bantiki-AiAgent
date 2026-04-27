@@ -1,9 +1,6 @@
 import os
 import json
 from gigachat import GigaChat
-from dotenv import load_dotenv
-
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
 # Загружаем данные о совместимости
 def load_compatibility():
@@ -56,9 +53,19 @@ def build_system_prompt(data: dict) -> str:
 Отвечай только на русском языке. Используй только компоненты из списков выше.
 """
 
+def get_api_key():
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    with open(env_path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if line.startswith("GIGACHAT_API_KEY="):
+                return line.split("=", 1)[1].strip()
+    return None
+
 def ask_agent(query: str) -> str:
+    api_key = get_api_key()
     with GigaChat(
-        credentials=os.getenv("GIGACHAT_API_KEY"),
+        credentials=api_key,
         verify_ssl_certs=False
     ) as giga:
         response = giga.chat({
