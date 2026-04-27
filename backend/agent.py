@@ -1,11 +1,9 @@
 import os
 import json
-from groq import Groq
+from gigachat import GigaChat
 from dotenv import load_dotenv
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
-
-client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Загружаем данные о совместимости
 def load_compatibility():
@@ -59,17 +57,14 @@ def build_system_prompt(data: dict) -> str:
 """
 
 def ask_agent(query: str) -> str:
-    response = client.chat.completions.create(
-        model="llama-3.3-70b-versatile",
-        messages=[
-            {
-                "role": "system",
-                "content": build_system_prompt(compatibility)
-            },
-            {
-                "role": "user",
-                "content": query
-            }
-        ]
-    )
-    return response.choices[0].message.content
+    with GigaChat(
+        credentials=os.getenv("GIGACHAT_API_KEY"),
+        verify_ssl_certs=False
+    ) as giga:
+        response = giga.chat({
+            "messages": [
+                {"role": "system", "content": build_system_prompt(compatibility)},
+                {"role": "user", "content": query}
+            ]
+        })
+        return response.choices[0].message.content
