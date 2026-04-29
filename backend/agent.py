@@ -13,34 +13,50 @@ compatibility = load_compatibility()
 def build_system_prompt(data: dict) -> str:
     return f"""Ты – ИИ-ассистент по подбору комплектующих для ПК.
 
-Получив запрос пользователя, выбери подходящие компоненты и верни ответ СТРОГО в два блока:
+Твой ответ должен содержать ДВА блока — строго в таком порядке:
 
-## БЛОК 1: JSON (обязательно между тегами <json> и </json>)
-Верни выбранные компоненты в формате:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+БЛОК 1 — машиночитаемый JSON (между тегами <json> и </json>)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 <json>
 {{
-  "scenario": "описание сценария",
+  "scenario": "краткое описание сценария",
   "budget": 50000,
   "components": [
-    {{"name": "CPU", "model": "название модели", "price": 12000}},
-    {{"name": "Материнская плата", "model": "название модели", "price": 8000}},
-    {{"name": "Видеокарта", "model": "название или встроенная", "price": 0}},
-    {{"name": "ОЗУ", "model": "название модели", "price": 5000}},
-    {{"name": "Накопитель", "model": "название модели", "price": 4000}},
-    {{"name": "Блок питания", "model": "мощность и модель", "price": 3000}}
+    {{"name": "CPU", "model": "Intel Core i5-13400F", "price": 12000}},
+    {{"name": "Материнская плата", "model": "ASUS PRIME B660M-A", "price": 8000}},
+    {{"name": "Видеокарта", "model": "RTX 3060", "price": 22000}},
+    {{"name": "ОЗУ", "model": "Kingston Fury Beast 16GB DDR4-3200", "price": 5000}},
+    {{"name": "Накопитель", "model": "Kingston NV2 500GB", "price": 4000}},
+    {{"name": "Охлаждение", "model": "DeepCool GAMMAXX 400", "price": 1500}},
+    {{"name": "Блок питания", "model": "550 Вт", "price": 4000}}
   ]
 }}
 </json>
 
-## БЛОК 2: Текстовое описание
-После JSON напиши раздел "Особенности сборки" — обоснование выбора компонентов,
-совместимость, рекомендации. Этот текст будет показан пользователю.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+БЛОК 2 — текст для пользователя (markdown)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+После закрывающего тега </json> напиши следующие секции в markdown:
 
-## Правила выбора:
-- Процессор и материнская плата — одинаковый сокет
-- Тип ОЗУ (DDR4/DDR5) совпадает с поддержкой материнской платы
-- Мощность БП не ниже рекомендованной для видеокарты
-- Цены реалистичные для DNS/Ситилинк/М.Видео
+### Возможные варианты компонентов
+Таблица со ВСЕМИ доступными вариантами для каждого компонента и диапазоном цен.
+Модели в одну строку через " / ".
+
+| Компонент | Варианты моделей | Диапазон цен (₽) |
+|-----------|-----------------|-----------------|
+| CPU | модель1 / модель2 | ХХХХ - ХХХХ |
+
+### Особенности сборки
+- Обоснование совместимости (сокет, тип ОЗУ)
+- Почему выбраны именно эти компоненты
+- Рекомендации по апгрейду
+
+ПРАВИЛА:
+- В JSON указывай РЕАЛЬНЫЕ цены на каждый компонент (DNS/Ситилинк/М.Видео)
+- Процессор и мат. плата — одинаковый сокет
+- Тип ОЗУ совпадает с поддержкой мат. платы
+- БП не ниже рекомендованного для видеокарты
 
 ## Доступные компоненты:
 
@@ -67,13 +83,12 @@ def build_system_prompt(data: dict) -> str:
 """
 
 def extract_budget(query: str) -> int:
-    """Вытаскиваем бюджет из запроса пользователя"""
     patterns = [
-        r'(\d[\d\s]*)\s*(?:тыс(?:яч)?\.?\s*руб|тр|к\s*руб|000\s*руб)',
+        r'(\d+)\s*тыс',
+        r'(\d[\d\s]*)\s*(?:тыс(?:яч)?\.?\s*руб|тр|к\s*руб)',
         r'бюджет[^\d]*(\d[\d\s]*)',
         r'за\s*(\d[\d\s]*)',
         r'(\d{4,6})\s*(?:р|руб|₽)',
-        r'(\d+)\s*тыс',
     ]
     for pattern in patterns:
         match = re.search(pattern, query.lower())
@@ -111,12 +126,13 @@ def ask_agent(query: str) -> str:
         })
         raw = response.choices[0].message.content
 
-    # Извлекаем JSON из ответа
+    # Извлекаем JSON
     json_match = re.search(r'<json>(.*?)</json>', raw, re.DOTALL)
-    description = re.sub(r'<json>.*?</json>', '', raw, flags=re.DOTALL).strip()
+    # Текст после </json> — это markdown для пользователя
+    after_json = re.sub(r'<json>.*?</json>', '', raw, flags=re.DOTALL).strip()
 
     if not json_match:
-        return raw  # fallback если модель не вернула JSON
+        return raw  # fallback
 
     try:
         data = json.loads(json_match.group(1).strip())
@@ -124,29 +140,24 @@ def ask_agent(query: str) -> str:
         return raw
 
     components = data.get("components", [])
-    
-    # ВОТ ТУТ PYTHON СЧИТАЕТ СУММУ — не доверяем модели
-    total = sum(c.get("price", 0) for c in components)
     budget = budget or data.get("budget", 0)
-    # Формируем красивый ответ
+
+    # Python считает итог — модель не считает
+    total = sum(c.get("price", 0) for c in components)
+    status = "✅ укладывается в бюджет" if budget == 0 or total <= budget else "⚠️ превышает бюджет"
+
+    # Строим таблицу рекомендуемой сборки
     rows = ""
     for c in components:
-        rows += f"<tr><td>{c['name']}</td><td>{c['model']}</td><td>{c['price']:,}</td></tr>".replace(",", " ")
+        rows += f"| {c['name']} | {c['model']} | {c['price']:,} |\n".replace(",", " ")
 
-    status = "✅ укладывается в бюджет" if budget == 0 or total <= budget else "⚠️ превышает бюджет"
-    status_class = "ok" if "✅" in status else "warn"
+    recommended_table = f"""### Рекомендуемая сборка
 
-    result = f"""
-<div class="build-result">
-  <h3>Рекомендуемая сборка</h3>
-  <table>
-    <thead><tr><th>Компонент</th><th>Выбранная модель</th><th>Цена (₽)</th></tr></thead>
-    <tbody>{rows}</tbody>
-  </table>
-  <p class="total {status_class}">Итоговая цена: <strong>{total:,} ₽</strong> {status}</p>
-  <h3>Особенности сборки</h3>
-  <div class="description">{description}</div>
-</div>
+| Компонент | Выбранная модель | Цена (₽) |
+|-----------|-----------------|----------|
+{rows}
+Итоговая цена: {total:,} ₽ {status}
 """.replace(",", " ")
 
-    return result
+    # Итоговый ответ: варианты от модели + рекомендуемая таблица с правильной суммой
+    return after_json + "\n\n" + recommended_table
