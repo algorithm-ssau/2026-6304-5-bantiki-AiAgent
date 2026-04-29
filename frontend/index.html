@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Partsy</title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700&family=Nunito:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -224,7 +225,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
+      font-size: 18px;
       flex-shrink: 0;
       margin-top: 2px;
     }
@@ -240,14 +241,74 @@
     }
 
     .bubble {
-      padding: 12px 16px;
-      border-radius: 16px;
-      font-size: 14px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-break: break-word;
+        padding: 12px 16px;
+        border-radius: 16px;
+        font-size: 16px;
+        line-height: 1.6;
+        word-break: break-word;
     }
 
+        .bubble h1, .bubble h2, .bubble h3, .bubble h4 {
+            margin: 0 0 4px 0;
+            padding: 0;
+        }
+
+        .bubble *:first-child {
+            margin-top: 0 !important;
+        }
+
+        .bubble *:last-child {
+            margin-bottom: 0 !important;
+        }
+
+        .bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 4px 0 8px 0;
+            font-size: 14px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+      .bubble th {
+          background: var(--pink);
+          color: white;
+          font-weight: 600;
+          padding: 6px 8px;
+          border: 1px solid var(--border);
+          text-align: left;
+      }
+
+      .bubble td {
+          padding: 6px 8px;
+          border: 1px solid var(--border);
+          background-color: var(--surface);
+          text-align: left;
+      }
+
+        .bubble p {
+            margin: 4px 0;
+        }
+
+        .bubble a {
+            color: var(--pink-dark);
+            text-decoration: none;
+        }
+
+        .bubble a:hover {
+            text-decoration: underline;
+        }
+
+    .bubble ul {
+        margin: 6px 0;
+        padding-left: 20px;
+    }
+
+    .bubble li {
+        margin: 4px 0;
+        padding-left: 0;
+        list-style-type: disc;
+    }
     .message.user .bubble {
       background: linear-gradient(135deg, var(--pink), var(--pink-dark));
       color: white;
@@ -447,23 +508,33 @@
     }
 
     function addMessage(text, role) {
-      removeWelcome();
-      const msg = document.createElement('div');
-      msg.className = `message ${role}`;
+        removeWelcome();
+        const msg = document.createElement('div');
+        msg.className = `message ${role}`;
 
-      const avatar = document.createElement('div');
-      avatar.className = 'avatar';
-      avatar.textContent = role === 'user' ? '👤' : '🖥️';
+        const avatar = document.createElement('div');
+        avatar.className = 'avatar';
+        if (role === 'user') {
+            avatar.innerHTML = '<i class="fas fa-user" style="font-size: 18px; color: white;"></i>';
+        } else {
+            avatar.innerHTML = '<i class="fas fa-robot" style="font-size: 18px; color: white;"></i>';
+        }
 
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble';
-      bubble.innerHTML = marked.parse(text);
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble';
 
-      msg.appendChild(avatar);
-      msg.appendChild(bubble);
-      chat.appendChild(msg);
-      chat.scrollTop = chat.scrollHeight;
-      return msg;
+        // Супер-важная строка! Превращаем Markdown в HTML
+        if (role === 'bot') {
+            bubble.innerHTML = marked.parse(text);
+        } else {
+            bubble.innerHTML = text;
+        }
+
+        msg.appendChild(avatar);
+        msg.appendChild(bubble);
+        chat.appendChild(msg);
+        chat.scrollTop = chat.scrollHeight;
+        return msg;
     }
 
     function addTyping() {
@@ -474,7 +545,7 @@
 
       const avatar = document.createElement('div');
       avatar.className = 'avatar';
-      avatar.textContent = '🖥️';
+      avatar.innerHTML = '<i class="fas fa-robot" style="font-size: 18px; color: white;"></i>';
 
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
