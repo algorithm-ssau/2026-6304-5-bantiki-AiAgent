@@ -157,7 +157,15 @@ def ask_agent(query: str) -> str:
     except json.JSONDecodeError:
         return raw
 
-    budget = budget or data.get("budget", 0)
+    # ФИКС: Железобетонно делаем budget числом и отвязываем от списка деталей
+    if isinstance(budget, list):
+        budget = int(budget[0]) if budget else 0
+    else:
+        try:
+            budget = int(budget)
+        except (ValueError, TypeError):
+            budget = 0
+
     main_build = data.get("main", [])
     budget_build = data.get("budget", [])
 
