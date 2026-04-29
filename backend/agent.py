@@ -165,20 +165,19 @@ def ask_agent(query: str) -> str:
         return "⚠️ превышает бюджет"
 
     result = f"""### 🔥 Оптимальная сборка
+    
 
 {build_table(main_build)}
-Итоговая цена: {main_total:,} ₽ {status(main_total)}
+Итоговая цена: {main_total} ₽ {status(main_total)}
 
 ---
 
 ### 💰 Бюджетный вариант
-
 {build_table(budget_build)}
-Итоговая цена: {budget_total:,} ₽ {status(budget_total)}
+Итоговая цена: {budget_total} ₽ {status(budget_total)}
 
 ---
 
 {after_json}
-""".replace(",", " ")
-
+"""
     return result
