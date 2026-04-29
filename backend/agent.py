@@ -127,8 +127,28 @@ def get_api_key():
 def build_table(components: list) -> str:
     rows = ""
     for c in components:
-        rows += f"| {c['name']} | {c['model']} | {c['price']:,} |\n".replace(",", " ")
-    return f"\n| Компонент | Выбранная модель | Цена (₽) |\n|-----------|:----------------|----------:|\n{rows}\n"
+        name = c.get('name', 'Компонент')
+        model = c.get('model', 'Неизвестно')
+        price = c.get('price', 0)
+        
+        # 1. Формируем безопасный запрос для поиска (например, заменяем пробелы на %20)
+        search_query = urllib.parse.quote(model)
+        
+        # 2. Генерируем 100% рабочие ссылки на агрегаторы:
+        # Можно использовать Яндекс.Маркет:
+        link = f"https://market.yandex.ru/search?text={search_query}"
+        
+        # Или e-Katalog:
+        # link = f"https://www.e-katalog.ru/ek-list.php?search_={search_query}"
+        
+        # 3. Делаем кликабельное название
+        model_linked = f"[{model}]({link})"
+        
+        # 4. Добавляем знак "~" (примерно) к цене, чтобы не врать пользователю
+        rows += f"| {name} | {model_linked} | ~{price:,} |\n".replace(",", " ")
+        
+    # Меняем заголовок таблицы на "Примерная цена", так честнее
+    return f"\n| Компонент | Выбранная модель | Примерная цена (₽) |\n|-----------|:----------------|-------------------:|\n{rows}\n"
     
 def ask_agent(query: str) -> str:
     api_key = get_api_key()
