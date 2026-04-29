@@ -157,24 +157,38 @@ def ask_agent(query: str) -> str:
     except json.JSONDecodeError:
         return raw
 
-    # ФИКС: Железобетонно делаем budget числом и отвязываем от списка деталей
-    if isinstance(budget, list):
-        budget = int(budget[0]) if budget else 0
+   # 1. Безопасно получаем внешний бюджет (защита от списков)
+    current_budget = 0
+    if isinstance(budget, list) and budget:
+        try: current_budget = int(budget[0])
+        except: pass
     else:
-        try:
-            budget = int(budget)
-        except (ValueError, TypeError):
-            budget = 0
+        try: current_budget = int(budget)
+        except (ValueError, TypeError): pass
 
+    # 2. Достаем основную сборку
     main_build = data.get("main", [])
-    budget_build = data.get("budget", [])
+    if not isinstance(main_build, list):
+        main_build = []
 
-    # Python считает итог — не модель
-    main_total = sum(c.get("price", 0) for c in main_build)
-    budget_total = sum(c.get("price", 0) for c in budget_build)
+    # 3. Разбираемся с шизофренией Гигачата (число или список?)
+    raw_budget_from_llm = data.get("budget")
+    budget_build = []
+    
+    if isinstance(raw_budget_from_llm, list):
+        # Если прислал детали — сохраняем как дешевую сборку
+        budget_build = raw_budget_from_llm
+    elif isinstance(raw_budget_from_llm, int) or isinstance(raw_budget_from_llm, float):
+        # Если прислал деньги — сохраняем их в бюджет (если своего нет)
+        if current_budget == 0:
+            current_budget = int(raw_budget_from_llm)
+
+    # 4. Считаем итог с защитой от кривых данных внутри списков
+    main_total = sum(c.get("price", 0) for c in main_build if isinstance(c, dict))
+    budget_total = sum(c.get("price", 0) for c in budget_build if isinstance(c, dict))
 
     def status(total):
-        if budget == 0 or total <= budget:
+        if current_budget == 0 or total <= current_budget:
             return "✅ укладывается в бюджет"
         return "⚠️ превышает бюджет"
 
