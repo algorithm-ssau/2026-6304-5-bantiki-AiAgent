@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import urllib.parse
 from gigachat import GigaChat
 
 def load_compatibility():
