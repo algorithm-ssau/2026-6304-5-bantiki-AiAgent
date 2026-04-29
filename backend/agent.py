@@ -121,8 +121,8 @@ def build_table(components: list) -> str:
     rows = ""
     for c in components:
         rows += f"| {c['name']} | {c['model']} | {c['price']:,} |\n".replace(",", " ")
-    return
-    f"| Компонент | Выбранная модель | Цена (₽) |\n|-----------|-----------------|----------|\n{rows}"
+    return f"\n| Компонент | Выбранная модель | Цена (₽) |\n|-----------|:----------------|----------:|\n{rows}\n"
+    
 def ask_agent(query: str) -> str:
     api_key = get_api_key()
     budget = extract_budget(query)
