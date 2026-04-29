@@ -16,13 +16,17 @@ def build_system_prompt(data: dict) -> str:
 Твой ответ должен содержать ДВА блока — строго в таком порядке:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-БЛОК 1 — машиночитаемый JSON (между тегами <json> и </json>)
+БЛОК 1 — JSON (между тегами <json> и </json>)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Верни ДВА варианта сборки:
+- "main": оптимальная сборка, максимум возможностей в рамках бюджета
+- "budget": чуть дешевле (на 15-25%), чуть слабее, но не кардинально
+
 <json>
 {{
   "scenario": "краткое описание сценария",
   "budget": 50000,
-  "components": [
+  "main": [
     {{"name": "CPU", "model": "Intel Core i5-13400F", "price": 12000}},
     {{"name": "Материнская плата", "model": "ASUS PRIME B660M-A", "price": 8000}},
     {{"name": "Видеокарта", "model": "RTX 3060", "price": 22000}},
@@ -30,6 +34,15 @@ def build_system_prompt(data: dict) -> str:
     {{"name": "Накопитель", "model": "Kingston NV2 500GB", "price": 4000}},
     {{"name": "Охлаждение", "model": "DeepCool GAMMAXX 400", "price": 1500}},
     {{"name": "Блок питания", "model": "550 Вт", "price": 4000}}
+  ],
+  "budget": [
+    {{"name": "CPU", "model": "Intel Core i3-12100F", "price": 8000}},
+    {{"name": "Материнская плата", "model": "ASUS PRIME B660M-A", "price": 8000}},
+    {{"name": "Видеокарта", "model": "GTX 1660 Super", "price": 16000}},
+    {{"name": "ОЗУ", "model": "Kingston Fury Beast 8GB DDR4-3200", "price": 3000}},
+    {{"name": "Накопитель", "model": "Kingston NV2 500GB", "price": 4000}},
+    {{"name": "Охлаждение", "model": "be quiet! Pure Rock 2", "price": 1200}},
+    {{"name": "Блок питания", "model": "450 Вт", "price": 3500}}
   ]
 }}
 </json>
@@ -37,26 +50,21 @@ def build_system_prompt(data: dict) -> str:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 БЛОК 2 — текст для пользователя (markdown)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-После закрывающего тега </json> напиши следующие секции в markdown:
-
-### Возможные варианты компонентов
-Таблица со ВСЕМИ доступными вариантами для каждого компонента и диапазоном цен.
-Модели в одну строку через " / ".
-
-| Компонент | Варианты моделей | Диапазон цен (₽) |
-|-----------|-----------------|-----------------|
-| CPU | модель1 / модель2 | ХХХХ - ХХХХ |
+После </json> напиши ТОЛЬКО:
 
 ### Особенности сборки
-- Обоснование совместимости (сокет, тип ОЗУ)
-- Почему выбраны именно эти компоненты
+- Совместимость компонентов (сокет, тип ОЗУ)
+- Чем отличаются два варианта и когда выбрать каждый
 - Рекомендации по апгрейду
 
+НЕ НУЖНО писать таблицы с вариантами всех компонентов — только особенности.
+
 ПРАВИЛА:
-- В JSON указывай РЕАЛЬНЫЕ цены на каждый компонент (DNS/Ситилинк/М.Видео)
 - Процессор и мат. плата — одинаковый сокет
 - Тип ОЗУ совпадает с поддержкой мат. платы
 - БП не ниже рекомендованного для видеокарты
+- Цены реалистичные (DNS/Ситилинк/М.Видео)
+- Оба варианта должны быть совместимы
 
 ## Доступные компоненты:
 
@@ -109,6 +117,12 @@ def get_api_key():
                 return line.split("=", 1)[1].strip()
     return None
 
+def build_table(components: list) -> str:
+    rows = ""
+    for c in components:
+        rows += f"| {c['name']} | {c['model']} | {c['price']:,} |\n".replace(",", " ")
+    return
+    f"| Компонент | Выбранная модель | Цена (₽) |\n|-----------|-----------------|----------|\n{rows}"
 def ask_agent(query: str) -> str:
     api_key = get_api_key()
     budget = extract_budget(query)
@@ -126,38 +140,45 @@ def ask_agent(query: str) -> str:
         })
         raw = response.choices[0].message.content
 
-    # Извлекаем JSON
     json_match = re.search(r'<json>(.*?)</json>', raw, re.DOTALL)
-    # Текст после </json> — это markdown для пользователя
     after_json = re.sub(r'<json>.*?</json>', '', raw, flags=re.DOTALL).strip()
 
     if not json_match:
-        return raw  # fallback
+        return raw
 
     try:
         data = json.loads(json_match.group(1).strip())
     except json.JSONDecodeError:
         return raw
 
-    components = data.get("components", [])
     budget = budget or data.get("budget", 0)
+    main_build = data.get("main", [])
+    budget_build = data.get("budget", [])
 
-    # Python считает итог — модель не считает
-    total = sum(c.get("price", 0) for c in components)
-    status = "✅ укладывается в бюджет" if budget == 0 or total <= budget else "⚠️ превышает бюджет"
+    # Python считает итог — не модель
+    main_total = sum(c.get("price", 0) for c in main_build)
+    budget_total = sum(c.get("price", 0) for c in budget_build)
 
-    # Строим таблицу рекомендуемой сборки
-    rows = ""
-    for c in components:
-        rows += f"| {c['name']} | {c['model']} | {c['price']:,} |\n".replace(",", " ")
+    def status(total):
+        if budget == 0 or total <= budget:
+            return "✅ укладывается в бюджет"
+        return "⚠️ превышает бюджет"
 
-    recommended_table = f"""### Рекомендуемая сборка
+    result = f"""### 🔥 Оптимальная сборка
 
-| Компонент | Выбранная модель | Цена (₽) |
-|-----------|-----------------|----------|
-{rows}
-Итоговая цена: {total:,} ₽ {status}
+{build_table(main_build)}
+Итоговая цена: {main_total:,} ₽ {status(main_total)}
+
+---
+
+### 💰 Бюджетный вариант
+
+{build_table(budget_build)}
+Итоговая цена: {budget_total:,} ₽ {status(budget_total)}
+
+---
+
+{after_json}
 """.replace(",", " ")
 
-    # Итоговый ответ: варианты от модели + рекомендуемая таблица с правильной суммой
-    return after_json + "\n\n" + recommended_table
+    return result
