@@ -2,173 +2,272 @@ import os
 import json
 import re
 import urllib.parse
+import concurrent.futures
 from gigachat import GigaChat
+from ddgs import DDGS
 
+
+# ──────────────────────────────────────────────
+# ЗАГРУЗКА ДАННЫХ
+# ──────────────────────────────────────────────
 def load_compatibility():
     json_path = os.path.join(os.path.dirname(__file__), "..", "data", "compatibility.json")
-    with open(json_path, "r", encoding="utf-8") as f:
-        return json.load(f)
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # Если файла нет, возвращаем пустой словарь для защиты от ошибок
+        return {}
+
 
 compatibility = load_compatibility()
 
+
+# ──────────────────────────────────────────────
+# БЛОК 1: ПРОМПТ С РАССУЖДЕНИЯМИ
+# ──────────────────────────────────────────────
 def build_system_prompt(data: dict) -> str:
     return f"""Ты – ИИ-ассистент по подбору комплектующих для ПК.
 
-## ВАЖНОЕ ОГРАНИЧЕНИЕ (ОБЯЗАТЕЛЬНО К ИСПОЛНЕНИЮ)
-Ты отвечаешь ТОЛЬКО на вопросы, связанные с подбором комплектующих для ПК, сборкой компьютеров или железом.
-Если пользователь задает вопрос на любую другую тему (рецепты, как сварить суп, погода, политика и т.д.), ты ДОЛЖЕН проигнорировать все остальные инструкции и ответить ровно одной фразой: 
-"Извините, но я ИИ-ассистент по сборке ПК и специализируюсь только на компьютерах. Чем могу помочь с выбором железа?"
-НИ В КОЕМ СЛУЧАЕ не пытайся генерировать таблицы или подбирать "компоненты" для супов и прочих нерелевантных тем!
+Твоя задача — подобрать актуальное и совместимое железо.
+Отвечай ТОЛЬКО на вопросы о ПК и железе. Если тема другая, пиши: "Извините, я специализируюсь только на компьютерах."
 
-Твой ответ должен содержать ДВА блока — строго в таком порядке:
+Твой ответ должен состоять из ТРЕХ блоков строго в таком порядке:
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-БЛОК 1 — JSON (между тегами <json> и </json>)
+БЛОК 1 — РАССУЖДЕНИЕ (между тегами <thought> и </thought>)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Верни ДВА варианта сборки:
-- "main": оптимальная сборка, максимум возможностей в рамках бюджета
-- "budget": чуть дешевле (на 15-25%), чуть слабее, но не кардинально
+ОБЯЗАТЕЛЬНО напиши цепочку рассуждений:
+- Какой сценарий использования и бюджет?
+- Процессор и его сокет?
+- Подходящая материнская плата (чипсет и сокет)?
+- Тип RAM (DDR4 или DDR5), поддерживаемый платой?
+- Какая видеокарта нужна и сколько ватт БП она требует?
+- Конкретная модель БП (обязательно с указанием ватт, например "DeepCool PK600D 600W").
+
+<thought>
+(твои рассуждения)
+</thought>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+БЛОК 2 — JSON-СБОРКА (теги <json> и </json>)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Верни два варианта сборки: "main" (оптимальная) и "budget_build" (дешевле).
+Цены ставь 0 (мы найдем их сами в интернете). Поле "model" у БП должно содержать название МОДЕЛИ, а не просто ватты!
 
 <json>
 {{
-  "scenario": "краткое описание сценария",
-  "budget": 50000,
-  "main": [
-    {{"name": "CPU", "model": "Intel Core i5-13400F", "price": 12000}},
-    {{"name": "Материнская плата", "model": "ASUS PRIME B660M-A", "price": 8000}},
-    {{"name": "Видеокарта", "model": "RTX 3060", "price": 22000}},
-    {{"name": "ОЗУ", "model": "Kingston Fury Beast 16GB DDR4-3200", "price": 5000}},
-    {{"name": "Накопитель", "model": "Kingston NV2 500GB", "price": 4000}},
-    {{"name": "Охлаждение", "model": "DeepCool GAMMAXX 400", "price": 1500}},
-    {{"name": "Блок питания", "model": "550 Вт", "price": 4000}}
+  "scenario": "краткое описание",
+  "main":[
+    {{"name": "CPU", "model": "Intel Core i5-12400F", "price": 0}},
+    {{"name": "Материнская плата", "model": "Gigabyte B660M DS3H", "price": 0}},
+    {{"name": "Видеокарта", "model": "Palit GeForce RTX 4060 Dual", "price": 0}},
+    {{"name": "ОЗУ", "model": "ADATA XPG GAMMIX D20 16GB", "price": 0}},
+    {{"name": "Накопитель", "model": "Kingston NV2 1TB", "price": 0}},
+    {{"name": "Охлаждение", "model": "ID-COOLING SE-214-XT", "price": 0}},
+    {{"name": "Блок питания", "model": "DeepCool PK550D 550W", "price": 0}}
   ],
-  "budget": [
-    {{"name": "CPU", "model": "Intel Core i3-12100F", "price": 8000}},
-    {{"name": "Материнская плата", "model": "ASUS PRIME B660M-A", "price": 8000}},
-    {{"name": "Видеокарта", "model": "GTX 1660 Super", "price": 16000}},
-    {{"name": "ОЗУ", "model": "Kingston Fury Beast 8GB DDR4-3200", "price": 3000}},
-    {{"name": "Накопитель", "model": "Kingston NV2 500GB", "price": 4000}},
-    {{"name": "Охлаждение", "model": "be quiet! Pure Rock 2", "price": 1200}},
-    {{"name": "Блок питания", "model": "450 Вт", "price": 3500}}
+  "budget_build":[
+    {{"name": "CPU", "model": "Intel Core i3-12100F", "price": 0}},
+    {{"name": "Материнская плата", "model": "MSI PRO H610M-E DDR4", "price": 0}},
+    {{"name": "Видеокарта", "model": "KFA2 GeForce GTX 1650", "price": 0}},
+    {{"name": "ОЗУ", "model": "Patriot Signature Line 16GB", "price": 0}},
+    {{"name": "Накопитель", "model": "ADATA Legend 700 500GB", "price": 0}},
+    {{"name": "Охлаждение", "model": "DeepCool GAMMAXX 300", "price": 0}},
+    {{"name": "Блок питания", "model": "DeepCool PF450 450W", "price": 0}}
   ]
 }}
 </json>
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-БЛОК 2 — текст для пользователя (markdown)
+БЛОК 3 — ТЕКСТ (markdown)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-После </json> напиши ТОЛЬКО:
+Опиши, чем отличаются эти два варианта и дай рекомендации по апгрейду.
 
-### Особенности сборки
-- Совместимость компонентов (сокет, тип ОЗУ)
-- Чем отличаются два варианта и когда выбрать каждый
-- Рекомендации по апгрейду
-
-НЕ НУЖНО писать таблицы с вариантами всех компонентов — только особенности.
-
-ПРАВИЛА:
-- Процессор и мат. плата — одинаковый сокет
-- Тип ОЗУ совпадает с поддержкой мат. платы
-- БП не ниже рекомендованного для видеокарты
-- Цены реалистичные (DNS/Ситилинк/М.Видео)
-- Оба варианта должны быть совместимы
-
-## Доступные компоненты:
-
-Сокеты и процессоры:
-{json.dumps(data['sockets'], ensure_ascii=False, indent=2)}
-
-Материнские платы:
-{json.dumps(data['motherboards'], ensure_ascii=False, indent=2)}
-
-Оперативная память:
-{json.dumps(data['ram'], ensure_ascii=False, indent=2)}
-
-Видеокарты:
-{json.dumps(data['gpu'], ensure_ascii=False, indent=2)}
-
-Накопители:
-{json.dumps(data['storage'], ensure_ascii=False, indent=2)}
-
-Охлаждение:
-{json.dumps(data['cooling'], ensure_ascii=False, indent=2)}
-
-Сценарии использования:
-{json.dumps(data['use_cases'], ensure_ascii=False, indent=2)}
+## Данные совместимости:
+Сокеты: {json.dumps(data.get('sockets', {}), ensure_ascii=False)}
+Материнские платы: {json.dumps(data.get('motherboards', {}), ensure_ascii=False)}
+Видеокарты: {json.dumps(data.get('gpu', {}), ensure_ascii=False)}
 """
 
+
+def fetch_real_price(model_name: str) -> int:
+    try:
+        # Первый запрос: ищем на трёх целевых сайтах
+        search_query = f"site:dns-shop.ru OR site:citilink.ru OR site:market.yandex.ru {model_name}"
+        print(f"DEBUG: ищу цену для {model_name}", flush=True)
+        results = DDGS().text(search_query, region='ru-ru', max_results=10)
+        prices = []
+        for r in results:
+            text = (r.get('body', '') + " " + r.get('title', '')).lower()
+            print(f"DEBUG: сниппет: {text[:130]}...", flush=True)
+
+            # Этап 2: числа без символа рубля, но рядом с "цена" / "стоимость"
+            if not matches:  # если не нашли со знаком, пробуем альтернативу
+                alt_matches = re.findall(
+                    r'(?:цена|стоимость)\D{0,10}?(\d[\d\s]{0,7})\b',
+                    text, re.IGNORECASE
+                )
+                for m in alt_matches:
+                    clean = m.replace(' ', '')
+                    val = int(clean)
+                    if 1500 <= val <= 200000:
+                        prices.append(val)
+                        print(f"DEBUG: найдена цена (контекст): {val}", flush=True)
+
+        # Фильтр выбросов
+        if prices:
+            prices_sorted = sorted(prices)
+            median = prices_sorted[len(prices_sorted)//2]
+            filtered = [p for p in prices if 0.5 * median < p < 1.5 * median]
+            if filtered:
+                avg = sum(filtered) // len(filtered)
+            else:
+                avg = sum(prices) // len(prices)
+            print(f"DEBUG: итоговая цена: {avg}", flush=True)
+            return avg
+
+        if prices:
+            avg = sum(prices) // len(prices)
+            print(f"DEBUG: fallback итоговая цена: {avg}", flush=True)
+            return avg
+        else:
+            print(f"DEBUG: цена не найдена", flush=True)
+    except Exception as e:
+        print(f"DEBUG: ошибка при поиске: {e}", flush=True)
+    return 0
+
+
+def update_prices(build_list: list):
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_comp = {executor.submit(fetch_real_price, c['model']): c for c in build_list if isinstance(c, dict)}
+        for future in concurrent.futures.as_completed(future_to_comp):
+            comp = future_to_comp[future]
+            try:
+                comp['price'] = future.result()
+            except Exception:
+                comp['price'] = 0
+
+# ──────────────────────────────────────────────
+# БЛОК 3: ПРОВЕРКА СОВМЕСТИМОСТИ
+# ──────────────────────────────────────────────
+def validate_build(components: list, comp_data: dict) -> list[str]:
+    warnings = []
+    cpu_name, mb_name, ram_name, gpu_name, psu_model = None, None, None, None, None
+
+    for c in components:
+        name, model = c.get("name", "").lower(), c.get("model", "")
+        if "cpu" in name or "процессор" in name:
+            cpu_name = model
+        elif "материнская" in name or "плата" in name:
+            mb_name = model
+        elif "озу" in name or "память" in name or "ram" in name:
+            ram_name = model
+        elif "видеокарта" in name or "gpu" in name:
+            gpu_name = model
+        elif "блок питания" in name or "бп" in name or "psu" in name:
+            psu_model = model
+
+    # Проверка сокета
+    if cpu_name and mb_name:
+        mb_info = comp_data.get("motherboards", {}).get(mb_name)
+        if mb_info:
+            mb_socket = mb_info.get("socket")
+            cpu_socket = next((sock for sock, cpus in comp_data.get("sockets", {}).items() if cpu_name in cpus), None)
+            if cpu_socket and mb_socket and cpu_socket != mb_socket:
+                warnings.append(
+                    f"⚠️ **Несовместимость:** {cpu_name} ({cpu_socket}) не подходит к {mb_name} ({mb_socket})")
+
+    # Проверка типа ОЗУ (DDR4/DDR5)
+    if mb_name and ram_name:
+        mb_info = comp_data.get("motherboards", {}).get(mb_name)
+        if mb_info:
+            mb_ram_type = mb_info.get("ram_type", "")
+            if mb_ram_type and mb_ram_type not in ram_name:
+                warnings.append(f"⚠️ **Память:** {ram_name} не подходит к плате {mb_name} (нужна {mb_ram_type})")
+
+    # Проверка мощности Блока Питания
+    if gpu_name and psu_model:
+        # ИСПРАВЛЕННЫЙ БАГ: ругаемся, только если написано просто "500W" или "450 Вт" без названия модели
+        if re.match(r'^\d+\s*[WВв][Tт]?$', psu_model.strip(), re.IGNORECASE):
+            warnings.append(f"⚠️ **Баг ИИ:** модель БП указана некорректно ('{psu_model}').")
+        else:
+            psu_watt_match = re.search(r'(\d{3,4})\s*[WВв]', psu_model)
+            if psu_watt_match:
+                psu_w = int(psu_watt_match.group(1))
+                for tier in comp_data.get("gpu", {}).values():
+                    if isinstance(tier, dict):
+                        for gpu, specs in tier.items():
+                            if gpu.lower() in gpu_name.lower():
+                                rec_psu = specs.get("recommended_psu_w", 0)
+                                if rec_psu and psu_w < rec_psu:
+                                    warnings.append(
+                                        f"⚠️ **Слабый БП:** для {gpu_name} нужно минимум {rec_psu}W, а выбран {psu_w}W")
+    return warnings
+
+
+# ──────────────────────────────────────────────
+# БЛОК 4: ВСПОМОГАТЕЛЬНЫЕ И ГЛАВНАЯ ФУНКЦИЯ
+# ──────────────────────────────────────────────
 def extract_budget(query: str) -> int:
-    patterns = [
-        r'(\d+)\s*тыс',
-        r'(\d[\d\s]*)\s*(?:тыс(?:яч)?\.?\s*руб|тр|к\s*руб)',
-        r'бюджет[^\d]*(\d[\d\s]*)',
-        r'за\s*(\d[\d\s]*)',
-        r'(\d{4,6})\s*(?:р|руб|₽)',
-    ]
-    for pattern in patterns:
+    for pattern in [r'(\d+)\s*тыс', r'(\d[\d\s]*)\s*(?:тыс(?:яч)?\.?\s*руб|тр|к\s*руб)', r'бюджет[^\d]*(\d[\d\s]*)',
+                    r'за\s*(\d[\d\s]*)', r'(\d{4,6})\s*(?:р|руб|₽)']:
         match = re.search(pattern, query.lower())
         if match:
-            num_str = match.group(1).replace(' ', '')
-            num = int(num_str)
-            if num < 1000:
-                num *= 1000
-            return num
+            num = int(match.group(1).replace(' ', ''))
+            return num * 1000 if num < 1000 else num
     return 0
+
 
 def get_api_key():
     env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
     with open(env_path, "r") as f:
         for line in f:
-            line = line.strip()
-            if line.startswith("GIGACHAT_API_KEY="):
+            if line.strip().startswith("GIGACHAT_API_KEY="):
                 return line.split("=", 1)[1].strip()
     return None
+
 
 def build_table(components: list) -> str:
     rows = ""
     for c in components:
-        name = c.get('name', 'Компонент')
-        model = c.get('model', 'Неизвестно')
-        price = c.get('price', 0)
-
-        # 1. Формируем безопасный запрос для поиска (например, заменяем пробелы на %20)
-        search_query = urllib.parse.quote(model)
-
-        # 2. Генерируем 100% рабочие ссылки на агрегаторы:
-        # Можно использовать Яндекс.Маркет:
-        link = f"https://market.yandex.ru/search?text={search_query}"
-
-        # Или e-Katalog:
-        # link = f"https://www.e-katalog.ru/ek-list.php?search_={search_query}"
-
-        # 3. Делаем кликабельное название
+        name, model, price = c.get('name', 'Компонент'), c.get('model', 'Неизвестно'), c.get('price', 0)
+        link = f"https://market.yandex.ru/search?text={urllib.parse.quote(model)}"
         model_linked = f"[{model}]({link})"
 
-        # 4. Добавляем знак "~" (примерно) к цене, чтобы не врать пользователю
-        rows += f"| {name} | {model_linked} | ~{price:,} |\n".replace(",", " ")
+        # ИСПРАВЛЕННЫЙ БАГ С ЗАПЯТЫМИ: Форматируем цену пробелами аккуратно
+        price_str = f"~{price:,}".replace(",", " ") if price > 0 else "Уточняйте в магазине"
+        rows += f"| {name} | {model_linked} | {price_str} |\n"
 
-    # Меняем заголовок таблицы на "Примерная цена", так честнее
     return f"\n| Компонент | Выбранная модель | Примерная цена (₽) |\n|-----------|:----------------|-------------------:|\n{rows}\n"
-    
-def ask_agent(query: str) -> str:
-    api_key = get_api_key()
-    budget = extract_budget(query)
 
-    with GigaChat(
-        credentials=api_key,
-        verify_ssl_certs=False,
-        temperature=0.1
-    ) as giga:
+
+def ask_agent(query: str) -> str:
+    print("DEBUG: ask_agent called", flush=True)
+    api_key = get_api_key()
+    print("DEBUG: api_key получен" if api_key else "DEBUG: api_key НЕ НАЙДЕН!", flush=True)
+    budget = extract_budget(query)
+    print(f"DEBUG: бюджет = {budget}", flush=True)
+
+    print("DEBUG: перед созданием GigaChat", flush=True)
+    with GigaChat(credentials=api_key, verify_ssl_certs=False, temperature=0.3) as giga:
+        print("DEBUG: GigaChat создан, отправляю запрос...", flush=True)
         response = giga.chat({
             "messages": [
                 {"role": "system", "content": build_system_prompt(compatibility)},
                 {"role": "user", "content": query}
             ]
         })
+        print("DEBUG: ответ от GigaChat получен", flush=True)
         raw = response.choices[0].message.content
 
+    print("DEBUG: парсинг ответа...", flush=True)
+
+    thought_match = re.search(r'<thought>(.*?)</thought>', raw, re.DOTALL)
     json_match = re.search(r'<json>(.*?)</json>', raw, re.DOTALL)
-    after_json = re.sub(r'<json>.*?</json>', '', raw, flags=re.DOTALL).strip()
+
+    after_json = re.sub(r'<thought>.*?</thought>', '', raw, flags=re.DOTALL)
+    after_json = re.sub(r'<json>.*?</json>', '', after_json, flags=re.DOTALL).strip()
 
     if not json_match:
         return raw
@@ -178,52 +277,61 @@ def ask_agent(query: str) -> str:
     except json.JSONDecodeError:
         return raw
 
-   # 1. Безопасно получаем внешний бюджет (защита от списков)
-    current_budget = 0
-    if isinstance(budget, list) and budget:
-        try: current_budget = int(budget[0])
-        except: pass
-    else:
-        try: current_budget = int(budget)
-        except (ValueError, TypeError): pass
-
-    # 2. Достаем основную сборку
     main_build = data.get("main", [])
-    if not isinstance(main_build, list):
-        main_build = []
 
-    # 3. Разбираемся с шизофренией Гигачата (число или список?)
-    raw_budget_from_llm = data.get("budget")
-    budget_build = []
-    
-    if isinstance(raw_budget_from_llm, list):
-        # Если прислал детали — сохраняем как дешевую сборку
-        budget_build = raw_budget_from_llm
-    elif isinstance(raw_budget_from_llm, int) or isinstance(raw_budget_from_llm, float):
-        # Если прислал деньги — сохраняем их в бюджет (если своего нет)
-        if current_budget == 0:
-            current_budget = int(raw_budget_from_llm)
+    # Пытаемся получить бюджетную сборку
+    budget_build = data.get("budget_build", [])
+    if not isinstance(budget_build, list):
+        fallback_budget = data.get("budget")
+        budget_build = fallback_budget if isinstance(fallback_budget, list) else []
 
-    # 4. Считаем итог с защитой от кривых данных внутри списков
+    # Запускаем парсер цен в интернете
+    update_prices(main_build)
+    update_prices(budget_build)
+
+    # Считаем итоговую цену сборок (складываем цены всех деталей)
     main_total = sum(c.get("price", 0) for c in main_build if isinstance(c, dict))
     budget_total = sum(c.get("price", 0) for c in budget_build if isinstance(c, dict))
 
+    # Функция проверки: влезли ли мы в бюджет пользователя
     def status(total):
-        if current_budget == 0 or total <= current_budget:
+        if budget == 0 or total <= budget:
             return "✅ укладывается в бюджет"
         return "⚠️ превышает бюджет"
 
-    result = f"""### 🔥 Оптимальная сборка
-    
+    # Проверяем сборки нашим Python-кодом на совместимость
+    main_warnings = validate_build(main_build, compatibility)
+    budget_warnings = validate_build(budget_build, compatibility)
 
+    def format_warnings(ws):
+        if not ws:
+            return ""
+        return "\n" + "\n".join(ws) + "\n"
+
+    # Извлекаем рассуждения ИИ, чтобы показать их пользователю
+    thought_text = thought_match.group(1).strip() if thought_match else ""
+
+    # Делаем цены красивыми (15000 -> 15 000)
+    main_total_str = f"{main_total:,}".replace(",", " ")
+    budget_total_str = f"{budget_total:,}".replace(",", " ")
+
+    # Собираем финальный текст ответа
+    result = f"""### 🛠 Рассуждения ИИ
+{thought_text}
+
+---
+
+### 🔥 Оптимальная сборка
 {build_table(main_build)}
-Итоговая цена: {main_total} ₽ {status(main_total)}
+Итоговая цена: {main_total_str} ₽ {status(main_total)}
+{format_warnings(main_warnings)}
 
 ---
 
 ### 💰 Бюджетный вариант
 {build_table(budget_build)}
-Итоговая цена: {budget_total} ₽ {status(budget_total)}
+Итоговая цена: {budget_total_str} ₽ {status(budget_total)}
+{format_warnings(budget_warnings)}
 
 ---
 
