@@ -126,7 +126,24 @@ def fetch_real_price(model_name: str) -> int:
                 avg = sum(prices) // len(prices)
             print(f"DEBUG: итоговая цена: {avg}", flush=True)
             return avg
-
+            
+        # Fallback: если на целевых сайтах ничего нет, ищем по всему интернету
+        print("DEBUG: fallback – поиск по всему интернету", flush=True)
+        results2 = DDGS().text(f"{model_name} цена руб", region='ru-ru', max_results=8)
+        for r in results2:
+            text = (r.get('body', '') + " " + r.get('title', '')).lower()
+            print(f"DEBUG: fallback сниппет: {text[:130]}...", flush=True)
+            # только со знаком рубля, чтобы не собирать мусор
+            matches = re.findall(
+                r'(?<!\d)(\d[\d\s]{0,7})\s*(?:руб|₽|р\.|rub)',
+                text, re.IGNORECASE
+            )
+            for m in matches:
+                clean = m.replace(' ', '')
+                val = int(clean)
+                if 1500 <= val <= 200000:
+                    prices.append(val)
+                    print(f"DEBUG: fallback цена: {val}", flush=True)
         if prices:
             avg = sum(prices) // len(prices)
             print(f"DEBUG: fallback итоговая цена: {avg}", flush=True)
