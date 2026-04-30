@@ -3,10 +3,18 @@ import json
 import re
 import urllib.parse
 import concurrent.futures
+import time
 from gigachat import GigaChat
 from ddgs import DDGS
 
-
+def safe_ddgs_text(query, max_results=10, retries=2):
+    for attempt in range(retries):
+        try:
+            return DDGS().text(query, region='ru-ru', max_results=max_results, timelimit=5)  # timelimit если поддерживается
+        except Exception as e:
+            print(f"DEBUG: попытка {attempt+1} не удалась: {e}", flush=True)
+            time.sleep(2)
+    return []
 # ──────────────────────────────────────────────
 # ЗАГРУЗКА ДАННЫХ
 # ──────────────────────────────────────────────
