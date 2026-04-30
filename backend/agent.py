@@ -116,6 +116,18 @@ def fetch_real_price(model_name: str) -> int:
             text = (r.get('body', '') + " " + r.get('title', '')).lower()
             print(f"DEBUG: сниппет: {text[:130]}...", flush=True)
 
+            # Этап 1: числа рядом с символом рубля
+            matches = re.findall(
+                r'(?<!\d)(\d[\d\s]{0,7})\s*(?:руб|₽|р\.|rub)',
+                text, re.IGNORECASE
+            )
+            for m in matches:
+                clean = m.replace(' ', '')
+                val = int(clean)
+                if 1500 <= val <= 200000:
+                    prices.append(val)
+                    print(f"DEBUG: найдена цена (знак рубля): {val}", flush=True)
+
             # Этап 2: числа без символа рубля, но рядом с "цена" / "стоимость"
             if not matches:  # если не нашли со знаком, пробуем альтернативу
                 alt_matches = re.findall(
